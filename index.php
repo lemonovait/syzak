@@ -96,7 +96,8 @@ function listPeople(): void
 // Obsługa usuwania
 if ($_GET['action'] ?? '' === 'delete' && !empty($_GET['id'])) {
     deletePerson($_GET['id']);
-    echo "<p style='color: red;'>🗑️ Osoba została usunięta.</p>";
+    header('Location: /?message=' . urlencode('🗑️ Osoba została usunięta.'), true, 303);
+    exit;
 }
 
 // Obsługa formularza
@@ -114,7 +115,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (!empty($data['first_name']) && !empty($data['last_name']) && !empty($data['email'])) {
         addPerson($data);
-        echo "<p style='color: green;'>✅ Osoba została dodana.</p>";
+        header('Location: /?message=' . urlencode('✅ Osoba została dodana.'), true, 303);
     } else {
         echo "<p style='color: red;'>❌ Wypełnij wszystkie pola obowiązkowe.</p>";
     }
@@ -178,6 +179,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <button type="submit">Zapisz</button>
     </form>
 
+    <?php
+    if (!empty($_GET['message'])) {
+        echo '<p style="color: green;">' . htmlspecialchars($_GET['message']) . '</p>';
+    }
+    ?>
+    
     <?php listPeople(); ?>
 </body>
 </html>
