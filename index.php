@@ -159,9 +159,13 @@ function listPeople(): void
 
     foreach ($rows as $doc) {
         $id = (string) $doc->_id;
-        $birthdate = isset($doc->birthdate)
-    ? date('Y-m-d', $doc->birthdate->toDateTime()->getTimestamp())
-    : '-';
+        $birthdate = '-';
+        $age = '';
+        if(isset($doc->birthdate)) {
+            $birthdateDt = $doc->birthdate->toDateTime();
+            $birthdate = date('Y-m-d', $birthdateDt->getTimestamp());
+            $age = '(' . $birthdateDt->diff(new DateTime())->y . ' lat)';
+        }
         $gender = $doc->gender ?? '-';
         $province = $doc->province ?? '-';
         $city = $doc->city ?? '-';
@@ -173,7 +177,7 @@ function listPeople(): void
             <td>{$doc->first_name}</td>
             <td>{$doc->last_name}</td>
             <td>{$doc->email}</td>
-            <td>{$birthdate}</td>
+            <td>{$birthdate} {$age}</td>
             <td>{$gender}</td>
             <td>{$province}</td>
             <td>{$city}</td>
