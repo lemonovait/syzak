@@ -40,6 +40,93 @@ function addPerson(array $person): void
     $manager->executeBulkWrite('test.people', $bulk);
 }
 
+function updatePerson(array $data): void
+{
+    global $manager;
+    $id = new MongoDB\BSON\ObjectId($data['id']);
+    $document = [
+        'first_name' => $data['first_name'],
+        'last_name' => $data['last_name'],
+        'email' => $data['email'],
+        'gender' => $data['gender'] ?? null,
+        'province' => $data['province'] ?? null,
+        'city' => $data['city'] ?? null,
+        'appliances' => $data['appliances'] ?? null,
+    ];
+
+    if (!empty($data['birthdate'])) {
+        $document['birthdate'] = new MongoDB\BSON\UTCDateTime(strtotime($data['birthdate']) * 1000);
+    } else {
+        $document['birthdate'] = null;
+    }
+
+    $bulk = new MongoDB\Driver\BulkWrite;
+    $bulk->update(['_id' => $id], ['$set' => $document]);
+    $manager->executeBulkWrite('test.people', $bulk);
+}
+
+function editPersonForm(string $id): void
+{
+    global $manager;
+    $objectId = new MongoDB\BSON\ObjectId($id);
+    $query = new MongoDB\Driver\Query(['_id' => $objectId]);
+    $result = $manager->executeQuery('test.people', $query)->toArray();
+
+    if (empty($result)) {
+        echo "<p style='color: red;'>❌ Nie znaleziono osoby.</p>";
+        return;
+    }
+
+    $person = $result[0];
+
+    // pomocnicze funkcje
+    $selected = fn($val, $target) => $val === $target ? 'selected' : '';
+    $checked = fn($val, $array) => in_array($val, $array ?? []) ? 'checked' : '';
+
+    echo "<h2>✏️ Edytuj osobę</h2>";
+    echo "<form method='POST'>
+        <input type='hidden' name='id' value='{$id}'>
+        <label>Imię: <input type='text' name='first_name' value='{$person->first_name}' required></label><br><br>
+        <label>Nazwisko: <input type='text' name='last_name' value='{$person->last_name}' required></label><br><br>
+        <label>Email: <input type='email' name='email' value='{$person->email}' required></label><br><br>
+        <label>Data urodzenia: <input type='date' name='birthdate' value='" . 
+            (!empty($person->birthdate) ? date('Y-m-d', $person->birthdate->toDateTime()->getTimestamp()) : '') . "'></label><br><br>
+
+        <label>Płeć:
+            <select name='gender'>
+                <option value=''>-- wybierz --</option>
+                <option value='Mężczyzna' {$selected($person->gender ?? '', 'Mężczyzna')}>Mężczyzna</option>
+                <option value='Kobieta' {$selected($person->gender ?? '', 'Kobieta')}>Kobieta</option>
+                <option value='Inne' {$selected($person->gender ?? '', 'Inne')}>Inne</option>
+            </select>
+        </label><br><br>
+
+        <label>Województwo:
+            <select name='province'>
+                <option value=''>-- wybierz --</option>";
+    $provinces = ["Dolnośląskie", "Kujawsko-pomorskie", "Lubelskie", "Lubuskie", "Łódzkie", "Małopolskie",
+        "Mazowieckie", "Opolskie", "Podkarpackie", "Podlaskie", "Pomorskie", "Śląskie", "Świętokrzyskie",
+        "Warmińsko-mazurskie", "Wielkopolskie", "Zachodniopomorskie"];
+    foreach ($provinces as $prov) {
+        $sel = $selected($person->province ?? '', $prov);
+        echo "<option value='$prov' $sel>$prov</option>";
+    }
+    echo "</select>
+        </label><br><br>
+
+        <label>Miasto: <input type='text' name='city' value='" . ($person->city ?? '') . "'></label><br><br>
+
+        <fieldset>
+            <legend>Sprzęt AGD:</legend>
+            <label><input type='checkbox' name='appliances[]' value='Pralka' {$checked('Pralka', $person->appliances ?? [])}> Pralka</label><br>
+            <label><input type='checkbox' name='appliances[]' value='Telewizor' {$checked('Telewizor', $person->appliances ?? [])}> Telewizor</label><br>
+            <label><input type='checkbox' name='appliances[]' value='Piekarnik' {$checked('Piekarnik', $person->appliances ?? [])}> Piekarnik</label><br>
+        </fieldset><br>
+
+        <button type='submit' name='update'>Zapisz zmiany</button>
+    </form>";
+}
+
 function deletePerson(string $id): void
 {
     global $manager;
@@ -86,11 +173,20 @@ function listPeople(): void
             <td>{$province}</td>
             <td>{$city}</td>
             <td>{$appliances}</td>
-            <td><a href=\"?action=delete&id={$id}\" onclick=\"return confirm('Na pewno usunąć?')\">🗑️ Usuń</a></td>
+            <td>
+                <a href=\"?action=edit&id={$id}\">✏️ Edytuj</a> |
+                <a href=\"?action=delete&id={$id}\" onclick=\"return confirm('Na pewno usunąć?')\">🗑️ Usuń</a>
+            </td>
         </tr>";
     }
 
     echo "</tbody></table>";
+}
+
+// Obsługa edycji
+if ($_GET['action'] ?? '' === 'edit' && !empty($_GET['id'])) {
+    editPersonForm($_GET['id']);
+    exit;
 }
 
 // Obsługa usuwania
@@ -119,6 +215,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         echo "<p style='color: red;'>❌ Wypełnij wszystkie pola obowiązkowe.</p>";
     }
+}
+
+// Obsługa aktualizacji z POST
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update'])) {
+    updatePerson($_POST);
+    header('Location: /?message=' . urlencode('✅ Zmiany zapisane.'));
+    exit;
 }
 ?>
 
