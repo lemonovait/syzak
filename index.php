@@ -148,6 +148,7 @@ function listPeople(): void
             <th>Imię</th>
             <th>Nazwisko</th>
             <th>Email</th>
+            <th>Data urodzenia</th>
             <th>Płeć</th>
             <th>Województwo</th>
             <th>Miasto</th>
@@ -158,6 +159,9 @@ function listPeople(): void
 
     foreach ($rows as $doc) {
         $id = (string) $doc->_id;
+        $birthdate = isset($doc->birthdate)
+    ? date('Y-m-d', $doc->birthdate->toDateTime()->getTimestamp())
+    : '-';
         $gender = $doc->gender ?? '-';
         $province = $doc->province ?? '-';
         $city = $doc->city ?? '-';
@@ -169,6 +173,7 @@ function listPeople(): void
             <td>{$doc->first_name}</td>
             <td>{$doc->last_name}</td>
             <td>{$doc->email}</td>
+            <td>{$birthdate}</td>
             <td>{$gender}</td>
             <td>{$province}</td>
             <td>{$city}</td>
@@ -181,6 +186,14 @@ function listPeople(): void
     }
 
     echo "</tbody></table>";
+}
+
+
+// Obsługa aktualizacji z POST
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update'])) {
+    updatePerson($_POST);
+    header('Location: /?message=' . urlencode('✅ Zmiany zapisane.'));
+    exit;
 }
 
 // Obsługa edycji
@@ -215,13 +228,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         echo "<p style='color: red;'>❌ Wypełnij wszystkie pola obowiązkowe.</p>";
     }
-}
-
-// Obsługa aktualizacji z POST
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update'])) {
-    updatePerson($_POST);
-    header('Location: /?message=' . urlencode('✅ Zmiany zapisane.'));
-    exit;
 }
 ?>
 
